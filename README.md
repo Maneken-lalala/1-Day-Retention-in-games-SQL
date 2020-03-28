@@ -12,7 +12,7 @@ purchases:
 |refunded_at|text|
 |created_at|text|
 
-gameplays:
+gameplays - is a list of when the user played
 |column name| data type|
 |--|--|
 |id|int|
