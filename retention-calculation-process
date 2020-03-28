@@ -1,0 +1,63 @@
+Before we can calculate retention we need to get our data formatted in a way where we can determine if a user returned.
+
+Currently the gameplays does not show if any user came back.
+
+I’ll join gameplays on itself so that I could have access to all gameplays for each player, for each of their gameplays.
+It will let me connect the players on Day N to the players on Day N+1
+
+To calculate retention, I'll start from a query that selects the date(created_at) as dt and user_id columns from the gameplays table.
+SELECT
+  date(created_at) AS dt,
+  user_id
+FROM gameplays AS g1
+ORDER BY dt
+LIMIT 10;
+
+I aliased gameplays in the query above because in the next step, 
+I need to join gameplays to itself so to get a result selecting [date, user_id, user_id_if_retained].
+
+SELECT
+  date(g1.created_at) AS dt,
+  g1.user_id
+FROM gameplays AS g1
+  JOIN gameplays AS g2 ON
+    g1.user_id = g2.user_id
+ORDER BY 1
+LIMIT 10;
+
+Now that I have the gameplays table joined to itself, I can start to calculate retention.
+First I'll modify the previous query to make sure it contains only relevant info.
+I'll  use a left join, this way all rows in g1 are preserved, 
+leaving nulls in the rows from g2 where users did not return to play the next day.
+
+SELECT
+  date(g1.created_at) AS dt,
+  COUNT(DISTINCT g1.user_id) AS total_users,
+  COUNT(DISTINCT(g2.user_id)) AS retained_users
+  
+FROM gameplays AS g1
+  LEFT JOIN gameplays AS g2 on
+    g1.user_id = g2.user_id
+    AND date(g1.created_at) = date(datetime(g2.created_at, '-1 day'))
+GROUP BY  1
+ORDER BY 1
+LIMIT 10;
+
+Now the new table makes it possible to see those users that have returned, 
+as it shows only join rows where the date in g1 is one less than the date in g2 making sure g2 is not null.
+
+Now that I've retained and total users, I'll divide retained users by total users to calculate 1 day retention.
+
+SELECT
+  date(g1.created_at) AS dt,
+  ROUND(100*COUNT(DISTINCT g2.user_id) /
+  COUNT(DISTINCT(g1.user_id))) AS retention
+FROM gameplays AS g1
+  LEFT join gameplays AS g2 ON
+    g1.user_id = g2.user_id
+    AND date(g1.created_at) = date(datetime(g2.created_at, '-1 day'))
+GROUP BY 1
+ORDER BY 1
+LIMIT 100;
+
+
